@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Symfony for Continuous Delivery" basedir="." default="help">
+    <!-- Build targets -->
+    <target name="help" description="Lists the available tasks">
+        <exec command="phing -l" dir="." passthru="true" />
+    </target>
+
+    <!-- DEV TARGETS -->
+
+    <target name="clear-cache" description="Clears the cache">
+        <delete dir="var/cache/dev" />
+        <delete dir="var/cache/test" />
+        <delete dir="var/cache/prod" />
+    </target>
+
+    <target name="install-vendor" description="Reinstalls vendors from lick file.">
+        <exec command="php composer.phar install" checkreturn="true" passthru="true" />
+        <!-- Enable these lines if you use bower -->
+        <!--<exec command="npm install" checkreturn="true" passthru="true" />-->
+        <!--<exec command="bower install" checkreturn="true" passthru="true" />-->
+        <phingcall target="clear-cache" />
+        <phingcall target="assets-install" />
+    </target>
+
+    <target name="assets-install" description="Installing assets">
+        <exec command="php bin/console assets:install" passthru="true" />
+        <exec command="php bin/console assetic:dump" passthru="true" />
+    </target>
+
+    <target name="regenerate-database" description="Re-create the database from datafixtures">
+        <exec command="php bin/console doctrine:database:drop --force" />
+        <exec command="php bin/console doctrine:database:create" />
+        <exec command="php bin/console doctrine:schema:create" />
+        <exec command="php bin/console doctrine:fixtures:load --append -n" passthru="true" />
+    </target>
+
+    <!-- TEST TARGETS -->
+
+    <target name="test-update" description="Updates vendor">
+        <exec command="git reset --hard" />
+        <exec command="git clean -df" />
+        <exec command="git fetch" passthru="true" />
+        <exec command="git pull" passthru="true" />
+        <exec command="SYMFONY_ENV=test php composer.phar install --no-interaction" checkreturn="true" passthru="true" />
+        <exec command="php composer.phar dump-autoload --optimize" checkreturn="true" passthru="true" />
+        <!-- Enable it if you're using Bower -->
+        <!--<exec command="npm install" checkreturn="true" passthru="true" />-->
+        <!--<exec command="bower install" checkreturn="true" passthru="true" />-->
+        <exec command="php bin/console cache:clear --env=test --no-debug" checkreturn="true" passthru="true" />
+        <exec command="php bin/console assets:install --env=test --no-debug" passthru="true" />
+        <exec command="php bin/console assetic:dump --env=test --no-debug" passthru="true" />
+        <phingcall target="empty-opcache" />
+    </target>
+
+    <target name="test-run-static-analysis" description="Runs static analysers on the code">
+        <exec command="/opt/sonar-runner/bin/sonar-runner" passthru="true" />
+    </target>
+
+    <target name="test-regenerate-fixtures" description="Re-create the database from datafixtures">
+        <exec command="php bin/console doctrine:database:drop --force --env=test" checkreturn="true" />
+        <exec command="php bin/console doctrine:database:create --env=test" checkreturn="true"/>
+        <exec command="php bin/console doctrine:schema:create --env=test" checkreturn="true" />
+        <exec command="php bin/console doctrine:fixtures:load --append -n" passthru="true"  checkreturn="true" />
+    </target>
+
+    <target name="test-run-tests" description="Runs the unit tests and functional tests">
+        <exec command="bin/phpunit --configuration phpunit.xml" passthru="true" />
+        <exec command="bin/behat --config behat.yml" passthru="true" />
+    </target>
+
+    <!-- PROD TARGETS -->
+
+    <target name="prod-update-prepare" description="Prepares for update">
+        <exec command="php bin/console lexik:maintenance:lock --env=prod -n" passthru="true" />
+    </target>
+
+    <target name="prod-update" description="Updates vendor">
+        <exec command="git fetch" passthru="true" />
+        <exec command="git pull" passthru="true" />
+        <exec command="SYMFONY_ENV=prod php composer.phar install --no-dev --no-interaction" checkreturn="true" passthru="true" />
+        <exec command="php composer.phar dump-autoload --optimize" checkreturn="true" passthru="true" />
+        <!-- Enable it if you're using Bower -->
+        <!--<exec command="npm install" checkreturn="true" passthru="true" />-->
+        <!--<exec command="bower install" checkreturn="true" passthru="true" />-->
+        <exec command="php bin/console cache:clear --env=prod --no-debug" checkreturn="true" passthru="true" />
+        <phingcall target="prod-assets-install" />
+        <phingcall target="empty-opcache" />
+        <!-- Redis -->
+        <!--<exec command="redis-cli flushall" />-->
+        <exec command="php bin/console doctrine:migrations:migrate --env=prod -n" passthru="true" />
+    </target>
+
+    <target name="prod-update-warmup" description="Finishes the update process">
+        <exec command="php bin/console lexik:maintenance:unlock --env=prod -n" passthru="true" />
+        <exec command="sudo service apache2 restart" passthru="true" />
+    </target>
+
+    <target name="prod-assets-install" description="Installing assets">
+        <exec command="php bin/console assets:install --env=prod --no-debug" passthru="true" />
+        <exec command="php bin/console assetic:dump --env=prod --no-debug" passthru="true" />
+    </target>
+
+    <target name="empty-opcache" description="Empties opcache">
+        <adhoc-task name="emptyCache"><![CDATA[
+                class emptyCacheTask extends Task {
+                    function main() {
+                        opcache_reset();
+                    }
+                }
+        ]]></adhoc-task>
+        <emptyCache />
+    </target>
+</project>

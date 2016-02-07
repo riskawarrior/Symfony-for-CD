@@ -1,0 +1,29 @@
+# Symfony
+
+/app/config/parameters.yml
+/build/
+/phpunit.xml
+/behat.yml
+/var/*
+!/var/cache
+/var/cache/*
+!var/cache/.gitkeep
+!/var/logs
+/var/logs/*
+!var/logs/.gitkeep
+!/var/backup
+/var/backup/*
+!var/backup/.gitkeep
+!/var/sessions
+/var/sessions/*
+!var/sessions/.gitkeep
+!var/SymfonyRequirements.php
+/vendor/
+/web/bundles/
+/composer.phar
+
+# IDEs
+/.idea
+
+# Other might be useful ignores
+/node_modules

@@ -1,0 +1,16 @@
+default:
+    extensions:
+        Behat\Symfony2Extension: ~
+        Behat\MinkExtension:
+#            show_cmd: 'firefox %s'
+            sessions:
+                default_session:
+                    symfony2: ~
+    suites:
+        AppBundle:
+            type: symfony_bundle
+            bundle: AppBundle
+            contexts:
+                - AppBundle\Features\Context
+            paths:
+                - src/AppBundle/Features
